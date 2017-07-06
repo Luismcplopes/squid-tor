@@ -7,16 +7,16 @@ Tor is connected to the internet.
 squid3-tor-privoxy
 
  
-1. Updating Debian.
-sudo apt-get update
+### 1. Updating Debian.
+'sudo apt-get update
 sudo apt-get upgrade
-apt-get dist-upgrade
+apt-get dist-upgrade'
  
-2. Install Squid3 server proxy.
+### 2. Install Squid3 server proxy.
 http://terminal28.com/how-to-install-and-configure-squid-proxy-server-clamav-squidclamav-c-icap-server-debian-linux/
  
-3. Install Privoxy server and Tor.
-sudo apt-get install tor privoxy
+###3. Install Privoxy server and Tor.
+'sudo apt-get install tor privoxy'
  
 4. Stop all servers after instalation.
 sudo /etc/init.d/squid3 stop
