@@ -93,4 +93,7 @@ Now start services
 service squid start
 service privoxy start
 service tor start
+
 Make sure you have opened squid port in iptables.
+Refer to this guide regarding configuring SQUID Auth. : http://wiki.vpsget.com/index.php/Squid_with_authentication_on_Centos_6
+""
