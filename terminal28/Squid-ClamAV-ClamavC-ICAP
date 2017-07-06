@@ -1,0 +1,341 @@
+http://terminal28.com/how-to-install-and-configure-squid-proxy-server-clamav-squidclamav-c-icap-server-debian-linux/#7_Configure_Squid_with_C-ICAP
+
+Example:
+Networ Configuration:
+Internal newtork: 192.168.0.0/24 eth1
+Internal address IP: 192.168.0.1 eth1
+Squid (3.1) non-SSL
+Server WWW required.
+ 
+1. Install some needed dependencies.
+sudo apt-get install gcc make curl libcurl4-gnutls-dev
+ 
+2. Install and Configure Squid Proxy Server.
+sudo apt-get install squid3 calamaris
+ 
+Edit configfile /etc/squid3/squid.conf.
+sudo nano /etc/squid3/squid.conf
+ 
+Make sure the line is uncommented (#).
+acl CONNECT method CONNECT
+ 
+Create new access lists acl LAN to your internal network 192.168.0.0/24.
+acl LAN src 192.168.0.0/24
+ 
+Additional access lists blacklist, whitelist, malware_block_list to block spam, commercials, malware, viruses…
+acl malware_block_list url_regex -i "/etc/squid3/malware_block_list"
+acl blacklist dstdom_regex "/etc/squid3/blacklist"
+acl whitelist dstdom_regex "/etc/squid3/whitelist"
+ 
+Access new acl lists – order matters:
+http_access allow whitelist
+http_access deny blacklist
+http_access deny malware_block_list
+http_access allow LAN
+ 
+Inform users about blocked website. Blocked commercials will be displayed as empty transparent place..
+deny_info http://YourServerName/error/dot-transparent.png blacklist
+deny_info http://YourServerName/error/dot-transparent.png whitelist
+deny_info http://YourServerName/error/error.html malware_block_list
+ 
+  Make sure the rules look like these. Do not change order.
+http_access allow localhost
+http_access allow manager localhost
+http_access deny manager
+http_access allow !Safe_ports
+http_access allow CONNECT !SSL_ports
+http_access allow localhost
+http_access deny all
+ 
+Setup address IP and listening port. Transparent mean no caching.
+http_port 192.168.0.1:3128 intercept
+ 
+Additional  setup – Anonymizer. Blocking headers:
+request_header_access Allow allow all
+request_header_access Authorization allow all
+request_header_access WWW-Authenticate allow all
+request_header_access Proxy-Authorization allow all
+request_header_access Proxy-Authenticate allow all
+request_header_access Content-Encoding allow all
+request_header_access Content-Length allow all
+request_header_access Content-Type allow all
+request_header_access Date allow all
+request_header_access Expires allow all
+request_header_access Host allow all
+request_header_access If-Modified-Since allow all
+request_header_access Last-Modified allow all
+request_header_access Location allow all
+request_header_access Pragma allow all
+request_header_access Accept allow all
+request_header_access Accept-Charset allow all
+request_header_access Accept-Encoding allow all
+request_header_access Accept-Language allow all
+request_header_access Content-Language allow all
+request_header_access Mime-Version allow all
+request_header_access Retry-After allow all
+request_header_access Title allow all
+request_header_access Connection allow all
+request_header_access Proxy-Connection allow all
+request_header_access User-Agent allow all
+request_header_access Cookie allow all
+request_header_access Referer deny all
+request_header_access X-Forwarded-For deny all
+request_header_access Via deny all
+request_header_access All deny all
+request_header_access Cache-Control deny all
+httpd_suppress_version_string on
+ 
+Cache (400MB)
+cache_dir ufs /var/spool/squid3 400 16 256
+ 
+Disable cache for access list – LAN:
+cache deny LAN
+ 
+Hostname
+visible_hostname YourServerName
+ 
+Hiding IP
+forwarded_for off
+ 
+If you do not have own dns cache (e.g. bind), loading website take ages, or you can see error from Squid, uncomment dns_nameservers and add yor ISP dns:
+dns_nameservers 12.34.56.78 98.76.54.32
+ 
+Download files: blacklist i whitelist, unpack and save it to /etc/squid3/.
+sudo wget http://terminal28.com/wp-content/uploads/2013/10/blacklist.tar.bz2
+sudo tar -xvf blacklist.tar.bz2
+sudo mv blacklist whitelist /etc/squid3
+ 
+Restart Squid.
+sudo /etc/init.d/squid3 restart
+ 
+Restarting Squid HTTP Proxy 3.x: squid3 Waiting.....................done.
+ 
+Attention! From 7.10.2013 you must subscribe malware_block_list for Squid.
+Download script malware_block_list to update domains and IP addresses , unpack and save it to /etc/squid3/.
+wget http://terminal28.com/wp-content/uploads/2013/10/malware_block_list.tar.bz2
+sudo tar -xvf malware_block_list.tar.bz2
+sudo mv malware_block_list /usr/local/bin/
+sudo chmod +x /usr/local/bin/malware_block_list
+sudo touch  /var/log/malware_block_list.log
+ 
+Add script malware_block_list to Cron.
+sudo crontab -e
+ 
+@daily /etc/squid3/malware_block_list.sh
+ 
+Logfile location: /var/log/malware_block_list.log.   Go to  MalwarePatrol.net, click tab: Block List. You should see subscription list: free and paid. Click Free/Subscribe. Subscribe the list. You should get password/receipt number on email. Log in to: https://www.malwarepatrol.net/login.php; and find Squid Web Proxy ACL and click Download. You will be redirected to website/text with malware list. Every subscription has unique receipt number receipt=f1234567890. https://lists.malwarepatrol.net/cgi/getfile?receipt=f1234567890&product=8&list=squid Copy URL and paste to script near link. Edit: link, user, pass.
+sudo nano /usr/local/bin/malware_block_list
+ 
+link='PASTE_LINK_FROM_MALWAREPATROL.NET'
+user='--http-user=USERNAME'
+passwd='--http-passwd=PASSWORD'
+ 
+sudo sh /usr/local/bin/malware_block_list
+ 
+3. Install Clamav-server.
+ 
+sudo apt-get install clamav-daemon
+ 
+4. Install and configure C-ICAP server.
+Create temporary folder install, download, unpack, configure and install ICAP server.
+sudo mkdir install
+cd install
+sudo wget http://sourceforge.net/projects/c-icap/files/c-icap/0.3.x/c_icap-0.3.5.tar.gz/download -O c_icap-0.3.5.tar.gz
+sudo tar -xvf c_icap-0.3.5.tar.gz
+cd c_icap-0.3.5
+sudo ./configure
+sudo make
+sudo make install
+cd ..
+ 
+Edit configfile  /usr/local/etc/c-icap.conf.
+sudo nano /usr/local/etc/c-icap.conf
+ 
+      Change:
+ServerAdmin root@localhost
+ 
+ServerName YourServerName
+Add..
+Service squidclamav squidclamav.so
+ 
+C-ICAP server autostart script.
+ 
+sudo wget http://terminal28.com/wp-content/uploads/2013/10/c-icap-autostart.tar.gz
+sudo tar xvf c-icap-autostart.tar.gz
+sudo rsync -avh init.d default /etc
+sudo update-rc.d c-icap defaults
+ 
+Usage: /etc/init.d/c-icap {start|stop|restart|force-reload|status|force-stop}
+Tips & Tricks. Run C-ICAP server.
+sudo /usr/local/bin/c-icap
+ 
+        Run C-ICAP servera with debugging.
+sudo /usr/local/bin/c-icap -N -D -d 10
+ 
+        Force load new configuration of SquidClamav.
+sudo echo -n "squidclamav:cfgreload" > /var/run/c-icap/c-icap.ctl
+ 
+        Reconfigure C-ICAP serwera.
+sudo echo -n "reconfigure" > /var/run/c-icap/c-icap.ctl
+ 
+Create logrotate script for c-icap server.
+sudo cat << EOT > /etc/logrotate.d/c-icap
+/usr/local/var/log/server.log /usr/local/var/log/access.log {
+     daily
+     rotate 4
+     missingok
+     notifempty
+     compress
+     create 0644 root root
+     postrotate
+     /etc/init.d/c-icap force-reload > /dev/null
+     endscript
+}
+EOT
+ 
+Change permission for c-icap logrotate script and server logs.
+sudo chmod 644 /etc/logrotate.d/c-icap
+sudo chown root:root /etc/logrotate.d/c-icap
+sudo chmod 644 /usr/local/var/log/ -R
+sudo chown root:root /usr/local/var/log/ -R
+sudo ln -s /usr/local/var/log/server.log /var/log/server.log
+sudo ln -s /usr/local/var/log/access.log /var/log/access.lo
+ 
+C-icap server logs location:
+/usr/local/var/log/server.log
+/usr/local/var/log/access.log
+or
+/var/log/access.log
+/var/log/server.log
+ 
+5. Install Squidclamav.
+Download, unpack, configure and install squidclamav.
+cd install
+sudo wget https://sourceforge.net/projects/squidclamav/files/squidclamav/6.15/squidclamav-6.15.tar.gz/download -O squidclamav-6.15.tar.gz
+sudo tar zxvf squidclamav-6.15.tar.gz
+cd squidclamav-6.15
+sudo ./configure
+sudo make
+sudo make install
+cp -rf cgi-bin /usr/lib/
+chmod +x /usr/lib/cgi-bin/clwarn* -R
+chown www-data:www-data /usr/lib/cgi-bin/clwarn* -R
+cd..
+sudo ldconfig 
+ 
+Configure squidclamav.
+Download file error.tar.bz2 and save it to /var/www.
+sudo wget http://man.sethuper.com/wp-content/uploads/2012/02/error.tar
+sudo tar -xvf error.tar
+sudo mv error /var/www/
+sudo chmod 750 -R /var/www/error/
+ 
+Edit configfile /etc/squidclamav.conf.
+sudo nano /etc/squidclamav.conf
+or
+sudo nano /usr/lcocal/etc/squidclamav.conf
+ 
+Add redirect URL – default script – clwarn.cgi (en).
+You can choose diferent language: DE, FR, BR, RU.
+redirect http://YourServerName/cgi-bin/clwarn.cgi
+ 
+Make sure the rule occurs in configfile.
+clamd_local /var/run/clamav/clamd.ctl
+ 
+6. Checking config file – ClamAV.
+Make sure the rule occurs in configfile.
+sudo nano /etc/clamav/clamd.conf
+
+LocalSocket /var/run/clamav/clamd.ctl
+
+Configure Freshclam.
+sudo nano /etc/clamav/freshclam.conf
+SafeBrowsing true
+ 
+Register on Securiteinfo.com:
+https://www.securiteinfo.com/clients/customers/signup
+Subscribe basic list for clamav
+You should get auto generated urls for clamav database under tab: Setup.
+Download allowed from 1 IP address, limited to 24 downloads per day
+securiteinfo.com_01
+Add generated URLS to freshclam configuration file at the end.
+DatabaseCustomURL http://www.securiteinfo.com/get/signatures/3b4d0...5764/securiteinfo.hdb
+DatabaseCustomURL http://www.securiteinfo.com/get/signatures/3b4b...eafd/securiteinfo.ign2
+DatabaseCustomURL http://www.securiteinfo.com/get/signatures/3b4d0d...61eafd/javascript.ndb
+DatabaseCustomURL http://www.securiteinfo.com/get/signatures/34d...81f/spam_marketing.ndb
+DatabaseCustomURL http://www.securiteinfo.com/get/signatures/3b...61eafd/securiteinfohtml.hdb
+DatabaseCustomURL http://www.securiteinfo.com/get/signatures/3b...365afd/securiteinfoascii.hdb
+ 
+Restart ClamAV.
+sudo /etc/init.d/clamav-daemon restart
+ 
+7. Configure Squid with C-ICAP.
+Configuration for Squid version – 3.1.20.
+sudo nano /etc/squid3/squid.conf
+Add..
+icap_enable on
+icap_send_client_ip on
+icap_send_client_username on
+icap_client_username_header X-Authenticated-User
+icap_service service_req reqmod_precache bypass=1 icap://127.0.0.1:1344/squidclamav
+adaptation_access service_req allow all
+icap_service service_resp respmod_precache bypass=1 icap://127.0.0.1:1344/squidclamav
+adaptation_access service_resp allow all
+ 
+Configuration for Squid version – 3.1.6.
+sudo nano /etc/squid3/squid.conf
+Add..
+icap_enable on
+icap_send_client_ip on
+icap_send_client_username on
+icap_client_username_encode off
+icap_client_username_header X-Client-Username
+icap_preview_enable on
+icap_preview_size 1024
+
+adaptation_service_set service_req
+icap_service service_req reqmod_precache bypass=1 icap://127.0.0.1:1344/request
+adaptation_access service_req allow all
+
+adaptation_service_set service_resp
+icap_service service_resp respmod_precache bypass=0 icap://127.0.0.1:1344/response
+adaptation_access service_resp allow all
+ 
+Run C-ICAP server.
+sudo /usr/local/bin/c-icap &
+ 
+You should see [PID]:
+[1] 28936
+ 
+8. Restart Squid.
+sudo /etc/init.d/squid3 restart
+ 
+Restarting Squid HTTP Proxy 3.x: squid3 Waiting.....................done.
+ 
+9. Configure firewall – masquerade, prerouting.
+Enable forwarding.
+Edit configfile sysctl.conf
+sudo nano /etc/sysctl.conf
+ 
+Uncomment IPv4 i IPv6 and change to 1:
+Net.ipv4.ip_forward = 1
+Net.ipv6.conf.all.forwarding = 1
+ 
+Configure firewall – iptables.
+sudo nano /etc/iptables.up.rules
+ 
+Add rules (Change address IP and network interface)
+*nat
+-A PREROUTING -p tcp -m tcp -i eth1 --dport 80 -j REDIRECT --to-ports 3128
+-A POSTROUTING -s 192.168.0.0/24 -j MASQUERADE
+ 
+10. Test.
+If you have done it right then..
+.. go to: http://www.eicar.org/85-0-Download.html
+and try to download file:
+eicar.com
+68 Bytes
+Result:
+You should be redirected to:
+http://YourServerName/cgi-bin/clwarn.cgi,
+http://YourServerName/error.html.
